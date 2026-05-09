@@ -1,0 +1,417 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.dash { padding: 1rem 0; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 8px; }
+.header h2 { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
+.badge { font-size: 12px; padding: 4px 10px; border-radius: var(--border-radius-md); background: var(--color-background-success); color: var(--color-text-success); }
+.badge.live { background: var(--color-background-danger); color: var(--color-text-danger); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem 1rem; }
+.metric .label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.metric .value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.metric .value.green { color: var(--color-text-success); }
+.metric .value.red { color: var(--color-text-danger); }
+.section-title { font-size: 14px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.controls { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.controls select { font-size: 13px; padding: 6px 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+.controls button { font-size: 13px; padding: 6px 14px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; transition: background 0.15s; }
+.controls button:hover { background: var(--color-background-secondary); }
+.controls button.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); }
+.scanner-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.scanner-table th { text-align: left; padding: 8px 10px; color: var(--color-text-secondary); font-weight: 500; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; }
+.scanner-table td { padding: 10px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); }
+.scanner-table tr:hover td { background: var(--color-background-secondary); }
+.signal-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+.signal-badge.buy { background: #EAF3DE; color: #27500A; }
+.signal-badge.sell { background: #FCEBEB; color: #791F1F; }
+.signal-badge.wait { background: #F1EFE8; color: #444441; }
+.strength-bar { width: 60px; height: 6px; border-radius: 3px; background: var(--color-background-secondary); overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+.strength-fill { height: 100%; border-radius: 3px; }
+.chart-area { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; margin-bottom: 1.5rem; background: var(--color-background-primary); }
+.chart-title { font-size: 13px; font-weight: 500; margin-bottom: 0.75rem; color: var(--color-text-primary); }
+.candle-chart { position: relative; height: 180px; width: 100%; }
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1rem; }
+.info-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; background: var(--color-background-primary); }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-row .key { color: var(--color-text-secondary); }
+.info-row .val { font-weight: 500; color: var(--color-text-primary); }
+.val.up { color: var(--color-text-success); }
+.val.down { color: var(--color-text-danger); }
+.trade-setup { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.75rem; margin-top: 0.75rem; font-size: 13px; }
+.trade-row { display: flex; justify-content: space-between; padding: 4px 0; }
+.trade-label { color: var(--color-text-secondary); }
+.trade-val { font-weight: 500; }
+.refresh-time { font-size: 12px; color: var(--color-text-secondary); }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 0; }
+.tab { font-size: 13px; padding: 6px 14px; cursor: pointer; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -0.5px; }
+.tab.active { color: var(--color-text-primary); border-bottom: 2px solid var(--color-text-primary); font-weight: 500; }
+</style>
+
+<div class="dash">
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Intraday Live Scanner Dashboard — VWAP EMA Strategy</h2>
+
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h2>Intraday Scanner</h2>
+      <span class="badge live" id="live-badge"><i class="ti ti-circle-filled" style="font-size:8px;vertical-align:1px"></i> Live</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="refresh-time" id="clock-display"></span>
+      <button onclick="refreshData()" style="font-size:13px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);cursor:pointer"><i class="ti ti-refresh" aria-hidden="true"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="metrics" id="metrics-row"></div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('scanner',this)">Scanner</div>
+    <div class="tab" onclick="switchTab('chart',this)">Chart View</div>
+    <div class="tab" onclick="switchTab('journal',this)">Trade Journal</div>
+  </div>
+
+  <div id="tab-scanner">
+    <div class="controls">
+      <select id="filter-signal" onchange="renderScanner()">
+        <option value="all">All Signals</option>
+        <option value="buy">Buy Only</option>
+        <option value="sell">Sell Only</option>
+        <option value="wait">Wait Only</option>
+      </select>
+      <select id="filter-sector" onchange="renderScanner()">
+        <option value="all">All Sectors</option>
+        <option value="Bank">Banking</option>
+        <option value="IT">IT</option>
+        <option value="Auto">Auto</option>
+        <option value="Energy">Energy</option>
+        <option value="FMCG">FMCG</option>
+      </select>
+    </div>
+    <table class="scanner-table">
+      <thead>
+        <tr>
+          <th>Stock</th>
+          <th>Price</th>
+          <th>Change</th>
+          <th>Signal</th>
+          <th>VWAP</th>
+          <th>9 EMA</th>
+          <th>21 EMA</th>
+          <th>Volume</th>
+          <th>Strength</th>
+        </tr>
+      </thead>
+      <tbody id="scanner-body"></tbody>
+    </table>
+    <div style="margin-top:0.75rem;font-size:12px;color:var(--color-text-secondary)">
+      <i class="ti ti-info-circle" style="font-size:14px;vertical-align:-2px" aria-hidden="true"></i>
+      Signals based on: Price vs VWAP + 9/21 EMA crossover + Volume confirmation. Simulated data for demo.
+    </div>
+  </div>
+
+  <div id="tab-chart" style="display:none">
+    <div class="controls">
+      <select id="chart-stock" onchange="renderChart()">
+        <option>RELIANCE</option><option>HDFCBANK</option><option>TCS</option><option>ICICIBANK</option><option>INFY</option><option>TATAMOTORS</option>
+      </select>
+      <button onclick="setTF('5m',this)" class="active" id="tf-5m">5m</button>
+      <button onclick="setTF('15m',this)" id="tf-15m">15m</button>
+      <button onclick="setTF('1h',this)" id="tf-1h">1h</button>
+    </div>
+    <div class="chart-area">
+      <div class="chart-title" id="chart-label">RELIANCE — 15 min chart</div>
+      <div class="candle-chart"><canvas id="mainChart"></canvas></div>
+    </div>
+    <div class="bottom-grid">
+      <div class="info-card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px;color:var(--color-text-primary)">Key Levels</div>
+        <div id="key-levels"></div>
+      </div>
+      <div class="info-card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px;color:var(--color-text-primary)">Trade Setup</div>
+        <div id="trade-setup-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-journal" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:1rem;align-items:center">
+      <button onclick="addTrade('buy')" style="font-size:13px;padding:6px 14px;border-radius:var(--border-radius-md);border:0.5px solid #27500A;background:#EAF3DE;color:#27500A;cursor:pointer"><i class="ti ti-plus" aria-hidden="true"></i> Add Buy</button>
+      <button onclick="addTrade('sell')" style="font-size:13px;padding:6px 14px;border-radius:var(--border-radius-md);border:0.5px solid #791F1F;background:#FCEBEB;color:#791F1F;cursor:pointer"><i class="ti ti-plus" aria-hidden="true"></i> Add Sell</button>
+      <button onclick="clearJournal()" style="font-size:13px;padding:6px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;margin-left:auto"><i class="ti ti-trash" aria-hidden="true"></i> Clear</button>
+    </div>
+    <table class="scanner-table" id="journal-table">
+      <thead><tr><th>Time</th><th>Stock</th><th>Type</th><th>Entry</th><th>SL</th><th>Target</th><th>Status</th><th>P&amp;L</th></tr></thead>
+      <tbody id="journal-body"></tbody>
+    </table>
+    <div class="bottom-grid" style="margin-top:1rem">
+      <div class="info-card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px">Today's P&amp;L</div>
+        <div id="pnl-summary"></div>
+      </div>
+      <div class="info-card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px">Rules Checklist</div>
+        <div id="rules-box"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const stocks = [
+  {name:'RELIANCE',price:2847,ch:1.2,signal:'buy',vwap:2831,ema9:2842,ema21:2828,vol:'2.4x',sector:'Energy',str:85},
+  {name:'HDFCBANK',price:1623,ch:0.8,signal:'buy',vwap:1615,ema9:1619,ema21:1611,vol:'1.8x',sector:'Bank',str:72},
+  {name:'TCS',price:3541,ch:-0.4,signal:'sell',vwap:3558,ema9:3548,ema21:3562,vol:'1.5x',sector:'IT',str:65},
+  {name:'ICICIBANK',price:1087,ch:1.5,signal:'buy',vwap:1074,ema9:1082,ema21:1071,vol:'3.1x',sector:'Bank',str:91},
+  {name:'INFY',price:1789,ch:-0.9,signal:'sell',vwap:1802,ema9:1795,ema21:1808,vol:'2.0x',sector:'IT',str:70},
+  {name:'TATAMOTORS',price:924,ch:2.1,signal:'buy',vwap:908,ema9:918,ema21:904,vol:'2.7x',sector:'Auto',str:88},
+  {name:'BAJFINANCE',price:7124,ch:-0.3,signal:'wait',vwap:7130,ema9:7128,ema21:7135,vol:'0.9x',sector:'Bank',str:40},
+  {name:'WIPRO',price:456,ch:0.2,signal:'wait',vwap:454,ema9:455,ema21:453,vol:'1.0x',sector:'IT',str:35},
+  {name:'SBIN',price:778,ch:1.8,signal:'buy',vwap:765,ema9:772,ema21:761,vol:'2.2x',sector:'Bank',str:80},
+  {name:'MARUTI',price:12340,ch:-1.1,signal:'sell',vwap:12410,ema9:12380,ema21:12425,vol:'1.6x',sector:'Auto',str:68},
+  {name:'HINDUNILVR',price:2456,ch:0.5,signal:'buy',vwap:2444,ema9:2450,ema21:2440,vol:'1.3x',sector:'FMCG',str:60},
+  {name:'ITC',price:467,ch:-0.2,signal:'wait',vwap:469,ema9:468,ema21:470,vol:'0.8x',sector:'FMCG',str:30},
+];
+
+let journal = [];
+let chartInst = null;
+let currentTF = '5m';
+
+function getNow(){
+  const d = new Date();
+  return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function updateClock(){
+  const el = document.getElementById('clock-display');
+  if(el) el.textContent = 'Last updated: ' + getNow();
+}
+
+function renderMetrics(){
+  const buys = stocks.filter(s=>s.signal==='buy').length;
+  const sells = stocks.filter(s=>s.signal==='sell').length;
+  const strong = stocks.filter(s=>s.str>=80).length;
+  const pnl = journal.reduce((a,t)=>a+(t.pnl||0),0);
+  document.getElementById('metrics-row').innerHTML = `
+    <div class="metric"><div class="label">Buy Signals</div><div class="value green">${buys}</div></div>
+    <div class="metric"><div class="label">Sell Signals</div><div class="value red">${sells}</div></div>
+    <div class="metric"><div class="label">Strong Setups</div><div class="value">${strong}</div></div>
+    <div class="metric"><div class="label">Today P&amp;L</div><div class="value ${pnl>=0?'green':'red'}">₹${pnl>=0?'+':''}${pnl}</div></div>
+    <div class="metric"><div class="label">Trades Today</div><div class="value">${journal.length}</div></div>
+  `;
+}
+
+function renderScanner(){
+  const sig = document.getElementById('filter-signal').value;
+  const sec = document.getElementById('filter-sector').value;
+  let data = stocks.filter(s=>(sig==='all'||s.signal===sig)&&(sec==='all'||s.sector===sec));
+  const tbody = document.getElementById('scanner-body');
+  tbody.innerHTML = data.map(s=>{
+    const color = s.ch>=0?'var(--color-text-success)':'var(--color-text-danger)';
+    const arrow = s.ch>=0?'ti-trending-up':'ti-trending-down';
+    const sigClass = s.signal;
+    const sigLabel = s.signal==='buy'?'<i class="ti ti-arrow-up" aria-hidden="true"></i> BUY':s.signal==='sell'?'<i class="ti ti-arrow-down" aria-hidden="true"></i> SELL':'<i class="ti ti-minus" aria-hidden="true"></i> WAIT';
+    const fillColor = s.str>=80?'#3B6D11':s.str>=60?'#639922':'#888780';
+    return `<tr>
+      <td style="font-weight:500">${s.name}<br><span style="font-size:11px;color:var(--color-text-secondary)">${s.sector}</span></td>
+      <td>₹${s.price.toLocaleString()}</td>
+      <td style="color:${color}"><i class="ti ${arrow}" style="font-size:12px" aria-hidden="true"></i> ${s.ch>0?'+':''}${s.ch}%</td>
+      <td><span class="signal-badge ${sigClass}">${sigLabel}</span></td>
+      <td style="color:${s.price>s.vwap?'var(--color-text-success)':'var(--color-text-danger)'}">₹${s.vwap}</td>
+      <td>₹${s.ema9}</td>
+      <td>₹${s.ema21}</td>
+      <td>${s.vol}</td>
+      <td><span style="font-size:12px;color:var(--color-text-secondary)">${s.str}%</span><span class="strength-bar"><span class="strength-fill" style="width:${s.str}%;background:${fillColor}"></span></span></td>
+    </tr>`;
+  }).join('');
+}
+
+function generateCandles(base, n){
+  let candles = [];
+  let p = base;
+  for(let i=0;i<n;i++){
+    const o = p + (Math.random()-0.48)*8;
+    const c = o + (Math.random()-0.46)*12;
+    const h = Math.max(o,c)+(Math.random()*5);
+    const l = Math.min(o,c)-(Math.random()*5);
+    candles.push({o:+o.toFixed(1),c:+c.toFixed(1),h:+h.toFixed(1),l:+l.toFixed(1)});
+    p = c;
+  }
+  return candles;
+}
+
+function calcEMA(data, period){
+  let ema = [];
+  const k = 2/(period+1);
+  let prev = data.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  for(let i=0;i<data.length;i++){
+    if(i<period-1){ema.push(null);continue;}
+    if(i===period-1){ema.push(+prev.toFixed(1));continue;}
+    prev = data[i]*k + prev*(1-k);
+    ema.push(+prev.toFixed(1));
+  }
+  return ema;
+}
+
+function renderChart(){
+  const stockName = document.getElementById('chart-stock').value;
+  const s = stocks.find(x=>x.name===stockName)||stocks[0];
+  document.getElementById('chart-label').textContent = `${s.name} — ${currentTF} chart`;
+  const n = currentTF==='5m'?40:currentTF==='15m'?28:18;
+  const candles = generateCandles(s.price*0.97, n);
+  const closes = candles.map(c=>c.c);
+  const ema9 = calcEMA(closes, 9);
+  const ema21 = calcEMA(closes, 21);
+  const vwapLine = closes.map(()=>+(s.vwap + (Math.random()-0.5)*2).toFixed(1));
+  const labels = candles.map((_,i)=>{
+    const mins = 9*60+30 + i*(currentTF==='5m'?5:currentTF==='15m'?15:60);
+    const h = Math.floor(mins/60);
+    const m = mins%60;
+    return `${h}:${m.toString().padStart(2,'0')}`;
+  });
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if(chartInst) chartInst.destroy();
+  chartInst = new Chart(ctx,{
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'Close',data:closes,borderColor:'#888780',borderWidth:1.5,pointRadius:0,tension:0.1,order:1},
+        {type:'line',label:'VWAP',data:vwapLine,borderColor:'#185FA5',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0.1,order:2},
+        {type:'line',label:'EMA 9',data:ema9,borderColor:'#3B6D11',borderWidth:1.5,pointRadius:0,tension:0.1,order:3},
+        {type:'line',label:'EMA 21',data:ema21,borderColor:'#993C1D',borderWidth:1.5,pointRadius:0,tension:0.1,order:4},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{font:{size:11},boxWidth:16,padding:8}}},
+      scales:{
+        x:{ticks:{font:{size:10},maxTicksLimit:8,color:'#888780'},grid:{color:'rgba(136,135,128,0.12)'}},
+        y:{ticks:{font:{size:10},color:'#888780'},grid:{color:'rgba(136,135,128,0.12)'}}
+      }
+    }
+  });
+
+  const lastClose = closes[closes.length-1];
+  const sl = +(lastClose * (s.signal==='buy'?0.992:1.008)).toFixed(1);
+  const tgt = +(lastClose + (lastClose-sl)*(s.signal==='buy'?2:-2)).toFixed(1);
+  document.getElementById('key-levels').innerHTML = `
+    <div class="info-row"><span class="key">VWAP</span><span class="val">₹${s.vwap}</span></div>
+    <div class="info-row"><span class="key">9 EMA</span><span class="val">₹${s.ema9}</span></div>
+    <div class="info-row"><span class="key">21 EMA</span><span class="val">₹${s.ema21}</span></div>
+    <div class="info-row"><span class="key">Day High</span><span class="val up">₹${(s.price*1.018).toFixed(0)}</span></div>
+    <div class="info-row"><span class="key">Day Low</span><span class="val down">₹${(s.price*0.982).toFixed(0)}</span></div>
+  `;
+  const setupColor = s.signal==='buy'?'#EAF3DE':s.signal==='sell'?'#FCEBEB':'#F1EFE8';
+  const setupText = s.signal==='buy'?'#27500A':s.signal==='sell'?'#791F1F':'#444441';
+  document.getElementById('trade-setup-box').innerHTML = `
+    <div style="background:${setupColor};border-radius:var(--border-radius-md);padding:8px 12px;margin-bottom:8px;font-size:13px;font-weight:500;color:${setupText};text-align:center">
+      ${s.signal==='buy'?'<i class="ti ti-trending-up"></i> BUY SETUP':s.signal==='sell'?'<i class="ti ti-trending-down"></i> SELL SETUP':'<i class="ti ti-minus"></i> NO CLEAR SETUP'}
+    </div>
+    <div class="trade-row"><span class="trade-label">Entry</span><span class="trade-val">₹${lastClose}</span></div>
+    <div class="trade-row"><span class="trade-label">Stop Loss</span><span class="trade-val" style="color:var(--color-text-danger)">₹${sl}</span></div>
+    <div class="trade-row"><span class="trade-label">Target</span><span class="trade-val" style="color:var(--color-text-success)">₹${tgt}</span></div>
+    <div class="trade-row"><span class="trade-label">Risk:Reward</span><span class="trade-val">1:2</span></div>
+  `;
+}
+
+function setTF(tf, btn){
+  currentTF = tf;
+  ['5m','15m','1h'].forEach(t=>document.getElementById('tf-'+t).classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+
+function addTrade(type){
+  const stockNames = stocks.map(s=>s.name);
+  const s = stocks[Math.floor(Math.random()*stocks.length)];
+  const entry = s.price;
+  const sl = +(entry*(type==='buy'?0.992:1.008)).toFixed(1);
+  const tgt = +(entry+(entry-sl)*(type==='buy'?2:-2)).toFixed(1);
+  const outcomes = ['open','target','sl'];
+  const outcome = outcomes[Math.floor(Math.random()*3)];
+  const pnl = outcome==='target'?+((Math.abs(entry-tgt))*10).toFixed(0):outcome==='sl'?-+((Math.abs(entry-sl))*10).toFixed(0):0;
+  journal.push({time:getNow(),stock:s.name,type,entry,sl,tgt,outcome,pnl});
+  renderJournal();
+  renderMetrics();
+}
+
+function clearJournal(){journal=[];renderJournal();renderMetrics();}
+
+function renderJournal(){
+  const tbody = document.getElementById('journal-body');
+  if(journal.length===0){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--color-text-secondary)">Koi trade nahi. "Add Buy" ya "Add Sell" karo.</td></tr>';return;}
+  tbody.innerHTML = journal.map(t=>{
+    const sc = t.outcome==='target'?'green':t.outcome==='sl'?'red':'';
+    const statusBadge = t.outcome==='target'?'<span style="background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;font-size:11px">Target Hit</span>':t.outcome==='sl'?'<span style="background:#FCEBEB;color:#791F1F;padding:2px 8px;border-radius:20px;font-size:11px">SL Hit</span>':'<span style="background:#F1EFE8;color:#444441;padding:2px 8px;border-radius:20px;font-size:11px">Open</span>';
+    return `<tr>
+      <td style="font-size:12px">${t.time}</td>
+      <td style="font-weight:500">${t.stock}</td>
+      <td><span class="signal-badge ${t.type}">${t.type==='buy'?'BUY':'SELL'}</span></td>
+      <td>₹${t.entry}</td>
+      <td style="color:var(--color-text-danger)">₹${t.sl}</td>
+      <td style="color:var(--color-text-success)">₹${t.tgt}</td>
+      <td>${statusBadge}</td>
+      <td class="${sc}" style="font-weight:500;color:${t.pnl>0?'var(--color-text-success)':t.pnl<0?'var(--color-text-danger)':'var(--color-text-secondary)'}">${t.pnl===0?'—':(t.pnl>0?'+':'')}₹${t.pnl}</td>
+    </tr>`;
+  }).join('');
+  const won = journal.filter(t=>t.outcome==='target').length;
+  const lost = journal.filter(t=>t.outcome==='sl').length;
+  const totalPnl = journal.reduce((a,t)=>a+t.pnl,0);
+  document.getElementById('pnl-summary').innerHTML = `
+    <div class="info-row"><span class="key">Total Trades</span><span class="val">${journal.length}</span></div>
+    <div class="info-row"><span class="key">Winners</span><span class="val up">${won}</span></div>
+    <div class="info-row"><span class="key">Losers</span><span class="val down">${lost}</span></div>
+    <div class="info-row"><span class="key">Net P&amp;L</span><span class="val ${totalPnl>=0?'up':'down'}">${totalPnl>=0?'+':''}₹${totalPnl}</span></div>
+  `;
+  const rules = [
+    {r:'SL set kiya?',ok:true},
+    {r:'Volume confirm hua?',ok:journal.length>0},
+    {r:'VWAP check kiya?',ok:true},
+    {r:'Max 3 trades limit',ok:journal.length<=3},
+    {r:'9:30 ke baad trade',ok:true},
+  ];
+  document.getElementById('rules-box').innerHTML = rules.map(r=>`
+    <div class="info-row">
+      <span class="key">${r.r}</span>
+      <span class="${r.ok?'val up':'val down'}">${r.ok?'<i class="ti ti-check" aria-hidden="true"></i>':'<i class="ti ti-x" aria-hidden="true"></i>'}</span>
+    </div>
+  `).join('');
+}
+
+function refreshData(){
+  stocks.forEach(s=>{
+    s.price = +(s.price*(1+(Math.random()-0.499)*0.003)).toFixed(1);
+    s.ch = +((Math.random()-0.45)*3).toFixed(2);
+    s.vwap = +(s.price*(0.994+Math.random()*0.012)).toFixed(1);
+    s.ema9 = +(s.price*(0.996+Math.random()*0.008)).toFixed(1);
+    s.ema21 = +(s.price*(0.992+Math.random()*0.010)).toFixed(1);
+    const signals = ['buy','buy','sell','wait'];
+    s.signal = s.price>s.vwap&&s.ema9>s.ema21?'buy':s.price<s.vwap&&s.ema9<s.ema21?'sell':'wait';
+    s.str = Math.min(99,Math.max(20,s.str+(Math.random()-0.5)*10|0));
+  });
+  renderScanner();
+  renderMetrics();
+  updateClock();
+}
+
+function switchTab(name, el){
+  ['scanner','chart','journal'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display='none';
+  });
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).style.display='block';
+  el.classList.add('active');
+  if(name==='chart') setTimeout(renderChart,50);
+  if(name==='journal') renderJournal();
+}
+
+updateClock();
+renderMetrics();
+renderScanner();
+renderJournal();
+setInterval(()=>{refreshData();}, 30000);
+</script>
