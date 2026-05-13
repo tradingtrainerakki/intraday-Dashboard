@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intraday Scanner Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c12;
+    --bg2: #0d1219;
+    --bg3: #111820;
+    --border: #1e2d3d;
+    --border2: #243040;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --red: #ff4060;
+    --yellow: #ffc700;
+    --text: #c8d8e8;
+    --text2: #6a8aaa;
+    --text3: #3a5a7a;
+    --buy: #00ff88;
+    --sell: #ff4060;
+    --wait: #ffc700;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'JetBrains Mono', monospace; font-size:13px; min-height:100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0d1a26 0%, #091520 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top:0; z-index:100;
+  }
+  .logo { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; letter-spacing:2px; }
+  .logo span { color: var(--accent); }
+  .logo sub { font-size:9px; color:var(--text2); letter-spacing:4px; display:block; margin-top:-2px; }
+  .header-right { display:flex; align-items:center; gap:16px; }
+  .market-badge {
+    padding:4px 10px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:1px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .market-open { background:#00ff8820; border:1px solid #00ff8840; color:var(--buy); }
+  .market-closed { background:#ff406020; border:1px solid #ff406040; color:var(--sell); }
+  .dot { width:7px; height:7px; border-radius:50%; animation: blink 1s infinite; }
+  .dot-green { background:var(--buy); box-shadow:0 0 6px var(--buy); }
+  .dot-red { background:var(--sell); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .clock { color:var(--accent); font-size:13px; font-weight:600; }
+  .refresh-btn {
+    background:var(--border); border:1px solid var(--border2); color:var(--text); padding:5px 12px;
+    border-radius:4px; cursor:pointer; font-family:inherit; font-size:11px; letter-spacing:1px;
+    transition:all 0.2s;
+  }
+  .refresh-btn:hover { background:var(--accent); color:#000; border-color:var(--accent); }
+
+  /* STATS BAR */
+  .stats-bar {
+    background:var(--bg2); border-bottom:1px solid var(--border);
+    padding:8px 20px; display:flex; gap:24px; overflow-x:auto;
+  }
+  .stat { display:flex; flex-direction:column; gap:2px; white-space:nowrap; }
+  .stat-label { font-size:9px; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
+  .stat-val { font-size:13px; font-weight:700; }
+  .stat-val.green { color:var(--buy); }
+  .stat-val.red { color:var(--sell); }
+  .stat-val.yellow { color:var(--yellow); }
+  .stat-val.blue { color:var(--accent); }
+
+  /* FILTERS */
+  .filters {
+    background:var(--bg2); border-bottom:1px solid var(--border);
+    padding:10px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .filter-group { display:flex; gap:6px; align-items:center; }
+  .filter-label { color:var(--text2); font-size:10px; letter-spacing:1px; }
+  .filter-btn {
+    padding:4px 10px; border-radius:4px; border:1px solid var(--border2);
+    background:transparent; color:var(--text2); cursor:pointer; font-family:inherit;
+    font-size:11px; transition:all 0.15s; letter-spacing:0.5px;
+  }
+  .filter-btn.active { background:var(--accent); color:#000; border-color:var(--accent); font-weight:700; }
+  .filter-btn.buy-active { background:var(--buy); color:#000; border-color:var(--buy); font-weight:700; }
+  .filter-btn.sell-active { background:var(--sell); color:#fff; border-color:var(--sell); font-weight:700; }
+  .filter-btn.wait-active { background:var(--yellow); color:#000; border-color:var(--yellow); font-weight:700; }
+  .search-box {
+    background:var(--bg3); border:1px solid var(--border2); color:var(--text);
+    padding:5px 10px; border-radius:4px; font-family:inherit; font-size:12px;
+    outline:none; width:140px;
+  }
+  .search-box::placeholder { color:var(--text3); }
+  .search-box:focus { border-color:var(--accent); }
+  .tf-badge {
+    padding:3px 8px; border-radius:3px; font-size:10px; font-weight:700;
+    border:1px solid; cursor:pointer; letter-spacing:1px;
+  }
+  .tf-5m { background:#00d4ff15; border-color:#00d4ff40; color:var(--accent); }
+  .tf-15m { background:#00ff8815; border-color:#00ff8840; color:var(--buy); }
+  .tf-1h { background:#ffc70015; border-color:#ffc70040; color:var(--yellow); }
+
+  /* NEW FEATURE BADGES */
+  .feature-tags { display:flex; gap:6px; margin-left:auto; }
+  .feature-tag {
+    padding:3px 8px; border-radius:3px; font-size:9px; font-weight:700;
+    letter-spacing:1px; border:1px solid;
+  }
+  .ft-mtf { background:#9b59b615; border-color:#9b59b640; color:#c39bd3; }
+  .ft-rs { background:#e67e2215; border-color:#e67e2240; color:#f0a500; }
+  .ft-vol { background:#1abc9c15; border-color:#1abc9c40; color:#1abc9c; }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  thead tr { background:var(--bg3); border-bottom:2px solid var(--border2); }
+  th {
+    padding:10px 14px; text-align:left; font-size:9px; letter-spacing:2px;
+    color:var(--text3); text-transform:uppercase; white-space:nowrap; font-weight:600;
+  }
+  tbody tr {
+    border-bottom:1px solid var(--border);
+    transition:background 0.15s;
+    cursor:pointer;
+  }
+  tbody tr:hover { background:var(--bg3); }
+  td { padding:10px 14px; white-space:nowrap; }
+  .stock-name { font-weight:700; color:#fff; font-size:14px; letter-spacing:0.5px; }
+  .stock-sector { font-size:9px; color:var(--text3); letter-spacing:1px; margin-top:2px; }
+  .price { font-weight:700; font-size:14px; color:#fff; }
+  .change { font-weight:600; font-size:12px; }
+  .change.pos { color:var(--buy); }
+  .change.neg { color:var(--sell); }
+
+  /* SIGNAL BADGES */
+  .signal-badge {
+    padding:4px 10px; border-radius:4px; font-size:10px; font-weight:700;
+    letter-spacing:1px; display:inline-block;
+  }
+  .sig-buy { background:#00ff8820; border:1px solid #00ff8840; color:var(--buy); }
+  .sig-sell { background:#ff406020; border:1px solid #ff406040; color:var(--sell); }
+  .sig-wait { background:#ffc70020; border:1px solid #ffc70040; color:var(--yellow); }
+
+  /* VWAP */
+  .vwap-above { color:var(--buy); font-size:11px; }
+  .vwap-below { color:var(--sell); font-size:11px; }
+
+  /* EMA */
+  .ema-bull { color:var(--buy); font-size:11px; font-weight:600; }
+  .ema-bear { color:var(--sell); font-size:11px; font-weight:600; }
+  .ema-neu { color:var(--text2); font-size:11px; }
+
+  /* MTF COLUMN */
+  .mtf-cell { display:flex; flex-direction:column; gap:3px; }
+  .mtf-row { display:flex; align-items:center; gap:5px; font-size:10px; }
+  .mtf-tf { color:var(--text3); width:22px; font-size:9px; letter-spacing:1px; }
+  .mtf-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .mtf-pass { background:var(--buy); box-shadow:0 0 4px var(--buy); }
+  .mtf-fail { background:var(--sell); }
+  .mtf-val { color:var(--text2); font-size:10px; }
+
+  /* RS COLUMN */
+  .rs-cell { display:flex; flex-direction:column; gap:2px; }
+  .rs-bar-wrap { width:60px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .rs-bar { height:100%; border-radius:2px; transition:width 0.5s; }
+  .rs-strong { background:var(--buy); }
+  .rs-weak { background:var(--sell); }
+  .rs-val { font-size:10px; }
+  .rs-val.strong { color:var(--buy); font-weight:700; }
+  .rs-val.weak { color:var(--sell); }
+  .rs-label { font-size:9px; color:var(--text3); }
+
+  /* VOLUME */
+  .vol-cell { display:flex; flex-direction:column; gap:2px; }
+  .vol-spike { color:var(--buy); font-weight:700; font-size:11px; }
+  .vol-norm { color:var(--text2); font-size:11px; }
+  .vol-mult { font-size:10px; }
+  .vol-mult.spike { color:var(--buy); font-weight:700; }
+  .vol-mult.norm { color:var(--text3); }
+  .vol-bar-wrap { width:60px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+  .vol-bar-fill { height:100%; border-radius:2px; }
+  .vol-bar-high { background:var(--buy); box-shadow:0 0 4px var(--buy); }
+  .vol-bar-mid { background:var(--yellow); }
+  .vol-bar-low { background:var(--text3); }
+
+  /* STRENGTH */
+  .strength-cell { display:flex; align-items:center; gap:8px; }
+  .strength-bar-wrap { width:70px; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .strength-bar { height:100%; border-radius:3px; transition:width 0.5s; }
+  .str-high { background: linear-gradient(90deg, var(--buy), #00ff44); }
+  .str-mid { background: linear-gradient(90deg, var(--yellow), #ffa500); }
+  .str-low { background: linear-gradient(90deg, var(--sell), #ff6080); }
+  .str-pct { font-size:11px; font-weight:700; }
+
+  /* LOADING */
+  .loading-row td { text-align:center; padding:40px; color:var(--text2); }
+  .spinner {
+    width:24px; height:24px; border:2px solid var(--border2);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin 0.8s linear infinite; display:inline-block; margin-right:10px;
+    vertical-align:middle;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* LEGEND */
+  .legend {
+    background:var(--bg2); border-top:1px solid var(--border);
+    padding:10px 20px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;
+  }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--text2); }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
+
+  /* SCROLL */
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+  /* FOOTER */
+  .footer {
+    background:var(--bg2); border-top:1px solid var(--border);
+    padding:8px 20px; display:flex; justify-content:space-between; align-items:center;
+    font-size:10px; color:var(--text3);
+  }
+
+  /* CONFIRM INDICATOR */
+  .confirm-all { 
+    display:inline-flex; align-items:center; gap:4px; padding:2px 7px;
+    background:#00ff8810; border:1px solid #00ff8830; border-radius:3px;
+    font-size:9px; color:var(--buy); font-weight:700; letter-spacing:1px;
+  }
+  .confirm-partial {
+    display:inline-flex; align-items:center; gap:4px; padding:2px 7px;
+    background:#ffc70010; border:1px solid #ffc70030; border-radius:3px;
+    font-size:9px; color:var(--yellow); font-weight:700; letter-spacing:1px;
+  }
+  .confirm-none {
+    display:inline-flex; align-items:center; gap:4px; padding:2px 7px;
+    background:#ff406010; border:1px solid #ff406030; border-radius:3px;
+    font-size:9px; color:var(--sell); font-weight:700; letter-spacing:1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    INTRADAY <span>PRO</span>
+    <sub>SCANNER · NSE / BSE · v2.0</sub>
+  </div>
+  <div class="header-right">
+    <div id="marketBadge" class="market-badge market-closed">
+      <div class="dot dot-red" id="marketDot"></div>
+      <span id="marketStatus">Market Closed</span>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+    <button class="refresh-btn" onclick="loadScanner()">↺ Refresh</button>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-label">Total Stocks</div>
+    <div class="stat-val blue" id="statTotal">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Buy Signals</div>
+    <div class="stat-val green" id="statBuy">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Sell Signals</div>
+    <div class="stat-val red" id="statSell">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">MTF Confirmed</div>
+    <div class="stat-val green" id="statMtf">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">RS Strong</div>
+    <div class="stat-val yellow" id="statRs">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Vol Spike</div>
+    <div class="stat-val green" id="statVol">--</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Last Update</div>
+    <div class="stat-val blue" id="statUpdate">--</div>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-label">SIGNAL:</span>
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('buy', this)">▲ Buy</button>
+    <button class="filter-btn" onclick="setFilter('sell', this)">▼ Sell</button>
+    <button class="filter-btn" onclick="setFilter('wait', this)">— Wait</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">CONFIRM:</span>
+    <button class="filter-btn" onclick="setMtfFilter(this)">MTF ✓</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">VOL:</span>
+    <button class="filter-btn" onclick="setVolFilter(this)">Spike 🔥</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">RS:</span>
+    <button class="filter-btn" onclick="setRsFilter(this)">Strong ⚡</button>
+  </div>
+  <input type="text" class="search-box" placeholder="🔍 Search stock..." oninput="searchStock(this.value)" />
+  <div class="feature-tags">
+    <span class="feature-tag ft-mtf">MTF</span>
+    <span class="feature-tag ft-rs">RS</span>
+    <span class="feature-tag ft-vol">VOL SPIKE</span>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Stock</th>
+        <th>Price</th>
+        <th>Change</th>
+        <th>Signal</th>
+        <th>VWAP Status</th>
+        <th>EMA Cross (5m)</th>
+        <th title="Multi-Timeframe: 5m EMA + 15m/1H above 200 EMA">MTF Confirm ⬡</th>
+        <th title="Relative Strength vs Nifty50">RS vs Nifty ⚡</th>
+        <th title="Volume vs 20-candle avg">Vol Spike 🔥</th>
+        <th>Strength</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr class="loading-row">
+        <td colspan="11"><div class="spinner"></div> Fetching live data...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--buy)"></div> Buy Signal</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--sell)"></div> Sell Signal</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Wait</div>
+  <div style="margin-left:10px;color:var(--text3);font-size:10px;">
+    <span style="color:#c39bd3">⬡ MTF</span>: 5m EMA cross + 15m/1H above 200 EMA &nbsp;|&nbsp;
+    <span style="color:#f0a500">⚡ RS</span>: Stock strength vs Nifty50 &nbsp;|&nbsp;
+    <span style="color:#1abc9c">🔥 VOL</span>: Current vol vs 20-candle avg (1.5x = spike)
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>🔴 Live NSE prices via Yahoo Finance · Auto-refresh every 60s during market hours</span>
+  <span id="footerUpdate">--</span>
+</div>
+
+<script>
+// =============================================
+// CONFIG
+// =============================================
+const STOCKS = [
+  { sym: "RELIANCE.NS", name: "RELIANCE", sector: "ENERGY" },
+  { sym: "HDFCBANK.NS", name: "HDFCBANK", sector: "BANKING" },
+  { sym: "TCS.NS", name: "TCS", sector: "IT" },
+  { sym: "ICICIBANK.NS", name: "ICICIBANK", sector: "BANKING" },
+  { sym: "INFY.NS", name: "INFY", sector: "IT" },
+  { sym: "SBIN.NS", name: "SBIN", sector: "BANKING" },
+  { sym: "TATAMOTORS.NS", name: "TATAMOTORS", sector: "AUTO" },
+  { sym: "BAJFINANCE.NS", name: "BAJFINANCE", sector: "FINANCE" },
+  { sym: "WIPRO.NS", name: "WIPRO", sector: "IT" },
+  { sym: "MARUTI.NS", name: "MARUTI", sector: "AUTO" },
+  { sym: "HINDUNILVR.NS", name: "HINDUNILVR", sector: "FMCG" },
+  { sym: "ITC.NS", name: "ITC", sector: "FMCG" },
+  { sym: "AXISBANK.NS", name: "AXISBANK", sector: "BANKING" },
+  { sym: "KOTAKBANK.NS", name: "KOTAKBANK", sector: "BANKING" },
+  { sym: "LT.NS", name: "LT", sector: "INFRA" },
+  { sym: "NTPC.NS", name: "NTPC", sector: "ENERGY" },
+  { sym: "ONGC.NS", name: "ONGC", sector: "ENERGY" },
+  { sym: "SUNPHARMA.NS", name: "SUNPHARMA", sector: "PHARMA" },
+  { sym: "TITAN.NS", name: "TITAN", sector: "CONSUMER" },
+  { sym: "ADANIPORTS.NS", name: "ADANIPORTS", sector: "INFRA" },
+];
+
+const NIFTY_SYM = "^NSEI";
+let allData = [];
+let activeFilter = 'all';
+let mtfFilter = false;
+let volFilter = false;
+let rsFilter = false;
+let searchVal = '';
+let refreshInterval = null;
+
+// =============================================
+// CLOCK
+// =============================================
+function updateClock() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  document.getElementById('clock').textContent = ist.toTimeString().slice(0,8);
+
+  const h = ist.getHours(), m = ist.getMinutes();
+  const isOpen = (h > 9 || (h === 9 && m >= 15)) && (h < 15 || (h === 15 && m <= 30)) && ist.getDay() >= 1 && ist.getDay() <= 5;
+
+  const badge = document.getElementById('marketBadge');
+  const dot = document.getElementById('marketDot');
+  const status = document.getElementById('marketStatus');
+  if (isOpen) {
+    badge.className = 'market-badge market-open';
+    dot.className = 'dot dot-green';
+    status.textContent = 'Market Open';
+  } else {
+    badge.className = 'market-badge market-closed';
+    dot.className = 'dot dot-red';
+    status.textContent = 'Market Closed';
+  }
+  return isOpen;
+}
+
+// =============================================
+// EMA CALCULATION
+// =============================================
+function calcEMA(prices, period) {
+  if (prices.length < period) return null;
+  const k = 2 / (period + 1);
+  let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < prices.length; i++) {
+    ema = prices[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calcVWAP(highs, lows, closes, volumes) {
+  let cumTPV = 0, cumVol = 0;
+  for (let i = 0; i < closes.length; i++) {
+    const tp = (highs[i] + lows[i] + closes[i]) / 3;
+    cumTPV += tp * volumes[i];
+    cumVol += volumes[i];
+  }
+  return cumVol > 0 ? cumTPV / cumVol : null;
+}
+
+// =============================================
+// FETCH DATA
+// =============================================
+async function fetchYahoo(symbol, interval, range) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return null;
+    const timestamps = result.timestamp || [];
+    const q = result.indicators?.quote?.[0] || {};
+    return {
+      timestamps,
+      opens: q.open || [],
+      highs: q.high || [],
+      lows: q.low || [],
+      closes: q.close || [],
+      volumes: q.volume || [],
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// =============================================
+// ANALYZE STOCK
+// =============================================
+async function analyzeStock(stock, niftyChange) {
+  try {
+    // Fetch 5m data (2 days)
+    const d5m = await fetchYahoo(stock.sym, '5m', '2d');
+    if (!d5m || d5m.closes.length < 25) return null;
+
+    const closes5m = d5m.closes.filter(Boolean);
+    const highs5m = d5m.highs.filter(Boolean);
+    const lows5m = d5m.lows.filter(Boolean);
+    const vols5m = d5m.volumes.filter(Boolean);
+
+    const price = closes5m[closes5m.length - 1];
+    const prevClose = closes5m[closes5m.length - 2] || price;
+    const change = ((price - prevClose) / prevClose) * 100;
+
+    // EMA 9 & 21 on 5m
+    const ema9_5m = calcEMA(closes5m, 9);
+    const ema21_5m = calcEMA(closes5m, 21);
+
+    // VWAP
+    const vwap = calcVWAP(highs5m, lows5m, closes5m, vols5m);
+
+    // ---- FEATURE 1: MTF CONFIRMATION ----
+    // 15m: check above 200 EMA
+    const d15m = await fetchYahoo(stock.sym, '15m', '5d');
+    let above200_15m = null, ema200_15m = null;
+    if (d15m && d15m.closes.length >= 200) {
+      const c15 = d15m.closes.filter(Boolean);
+      ema200_15m = calcEMA(c15, 200);
+      above200_15m = c15[c15.length - 1] > ema200_15m;
+    } else if (d15m && d15m.closes.length >= 50) {
+      const c15 = d15m.closes.filter(Boolean);
+      ema200_15m = calcEMA(c15, Math.min(50, c15.length - 1));
+      above200_15m = c15[c15.length - 1] > ema200_15m;
+    }
+
+    // 1H: check above 200 EMA (using 1mo data)
+    const d1h = await fetchYahoo(stock.sym, '60m', '1mo');
+    let above200_1h = null, ema200_1h = null;
+    if (d1h && d1h.closes.length >= 30) {
+      const c1h = d1h.closes.filter(Boolean);
+      ema200_1h = calcEMA(c1h, Math.min(50, c1h.length - 1));
+      above200_1h = c1h[c1h.length - 1] > ema200_1h;
+    }
+
+    // EMA crossover on 5m
+    const emaCross = ema9_5m && ema21_5m ? (ema9_5m > ema21_5m ? 'bullish' : 'bearish') : 'neutral';
+    const mtfConfirmed = above200_15m === true && above200_1h === true;
+
+    // ---- FEATURE 2: RELATIVE STRENGTH ----
+    const stockChange = change;
+    const rs = niftyChange !== null ? stockChange - niftyChange : null;
+    const rsStrong = rs !== null && rs > 0.3;
+
+    // ---- FEATURE 3: VOLUME SPIKE ----
+    const last20vols = vols5m.slice(-21, -1);
+    const avgVol = last20vols.length > 0 ? last20vols.reduce((a, b) => a + b, 0) / last20vols.length : 0;
+    const currentVol = vols5m[vols5m.length - 1] || 0;
+    const volMultiplier = avgVol > 0 ? currentVol / avgVol : 0;
+    const volSpike = volMultiplier >= 1.5;
+
+    // ---- SIGNAL LOGIC ----
+    let signal = 'wait';
+    if (emaCross === 'bullish' && price > (vwap || price) && change > 0) {
+      signal = 'buy';
+    } else if (emaCross === 'bearish' && price < (vwap || price) && change < 0) {
+      signal = 'sell';
+    }
+
+    // ---- STRENGTH SCORE ----
+    let score = 0;
+    if (signal === 'buy') score += 30;
+    if (signal === 'sell') score += 30;
+    if (mtfConfirmed) score += 25;
+    if (volSpike) score += 25;
+    if (rsStrong) score += 20;
+    score = Math.min(score, 100);
+
+    return {
+      ...stock,
+      price,
+      change,
+      signal,
+      vwap,
+      vwapStatus: vwap ? (price > vwap ? 'above' : 'below') : null,
+      ema9: ema9_5m,
+      ema21: ema21_5m,
+      emaCross,
+      above200_15m,
+      above200_1h,
+      ema200_15m,
+      ema200_1h,
+      mtfConfirmed,
+      rs,
+      rsStrong,
+      currentVol,
+      avgVol,
+      volMultiplier,
+      volSpike,
+      score,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// =============================================
+// RENDER
+// =============================================
+function renderRow(d, idx) {
+  const changeClass = d.change >= 0 ? 'pos' : 'neg';
+  const changeSign = d.change >= 0 ? '+' : '';
+
+  // Signal badge
+  let sigHTML = '';
+  if (d.signal === 'buy') sigHTML = '<span class="signal-badge sig-buy">▲ BUY</span>';
+  else if (d.signal === 'sell') sigHTML = '<span class="signal-badge sig-sell">▼ SELL</span>';
+  else sigHTML = '<span class="signal-badge sig-wait">— WAIT</span>';
+
+  // VWAP
+  let vwapHTML = '--';
+  if (d.vwap && d.vwapStatus) {
+    const pct = (((d.price - d.vwap) / d.vwap) * 100).toFixed(2);
+    vwapHTML = d.vwapStatus === 'above'
+      ? `<span class="vwap-above">▲ Above (${pct > 0 ? '+' : ''}${pct}%)</span>`
+      : `<span class="vwap-below">▼ Below (${pct}%)</span>`;
+  }
+
+  // EMA Cross
+  let emaHTML = '--';
+  if (d.ema9 && d.ema21) {
+    if (d.emaCross === 'bullish') emaHTML = `<span class="ema-bull">▲ Bullish (9>${21})</span>`;
+    else if (d.emaCross === 'bearish') emaHTML = `<span class="ema-bear">▼ Bearish (9<${21})</span>`;
+    else emaHTML = `<span class="ema-neu">— Neutral</span>`;
+  }
+
+  // MTF
+  const tf15Status = d.above200_15m === true ? 'mtf-pass' : 'mtf-fail';
+  const tf1hStatus = d.above200_1h === true ? 'mtf-pass' : 'mtf-fail';
+  const tf15Text = d.above200_15m === null ? '--' : (d.above200_15m ? '✓ Above' : '✗ Below');
+  const tf1hText = d.above200_1h === null ? '--' : (d.above200_1h ? '✓ Above' : '✗ Below');
+
+  let mtfBadge = '';
+  if (d.mtfConfirmed) mtfBadge = '<span class="confirm-all">✓ CONFIRMED</span>';
+  else if (d.above200_15m === true || d.above200_1h === true) mtfBadge = '<span class="confirm-partial">~ PARTIAL</span>';
+  else mtfBadge = '<span class="confirm-none">✗ WEAK</span>';
+
+  const mtfHTML = `
+    <div class="mtf-cell">
+      ${mtfBadge}
+      <div class="mtf-row"><span class="mtf-tf">15m</span><div class="mtf-dot ${tf15Status}"></div><span class="mtf-val">${tf15Text} 200EMA</span></div>
+      <div class="mtf-row"><span class="mtf-tf">1H</span><div class="mtf-dot ${tf1hStatus}"></div><span class="mtf-val">${tf1hText} 200EMA</span></div>
+    </div>`;
+
+  // RS
+  let rsHTML = '--';
+  if (d.rs !== null) {
+    const rsAbs = Math.abs(d.rs);
+    const barW = Math.min(rsAbs * 15, 100);
+    const barClass = d.rsStrong ? 'rs-strong' : 'rs-weak';
+    const valClass = d.rsStrong ? 'strong' : 'weak';
+    const rsSign = d.rs >= 0 ? '+' : '';
+    rsHTML = `
+      <div class="rs-cell">
+        <span class="rs-val ${valClass}">${rsSign}${d.rs.toFixed(2)}% vs Nifty</span>
+        <div class="rs-bar-wrap"><div class="rs-bar ${barClass}" style="width:${barW}%"></div></div>
+        <span class="rs-label">${d.rsStrong ? '⚡ RS Strong' : '→ Neutral'}</span>
+      </div>`;
+  }
+
+  // Volume Spike
+  const volM = d.volMultiplier.toFixed(1);
+  const volClass = d.volSpike ? 'vol-spike' : 'vol-norm';
+  const multClass = d.volSpike ? 'spike' : 'norm';
+  const barW = Math.min((d.volMultiplier / 3) * 100, 100);
+  const barFill = d.volMultiplier >= 2 ? 'vol-bar-high' : d.volMultiplier >= 1.5 ? 'vol-bar-mid' : 'vol-bar-low';
+  const volHTML = `
+    <div class="vol-cell">
+      <span class="${volClass}">${d.volSpike ? '🔥 SPIKE' : '• Normal'}</span>
+      <span class="vol-mult ${multClass}">${volM}x avg vol</span>
+      <div class="vol-bar-wrap"><div class="vol-bar-fill ${barFill}" style="width:${barW}%"></div></div>
+    </div>`;
+
+  // Strength
+  const strClass = d.score >= 70 ? 'str-high' : d.score >= 40 ? 'str-mid' : 'str-low';
+  const strHTML = `
+    <div class="strength-cell">
+      <div class="strength-bar-wrap"><div class="strength-bar ${strClass}" style="width:${d.score}%"></div></div>
+      <span class="str-pct" style="color:${d.score>=70?'var(--buy)':d.score>=40?'var(--yellow)':'var(--sell)'}">${d.score}%</span>
+    </div>`;
+
+  return `
+    <tr>
+      <td style="color:var(--text3)">${String(idx).padStart(2,'0')}</td>
+      <td><div class="stock-name">${d.name}</div><div class="stock-sector">${d.sector}</div></td>
+      <td><span class="price">₹${d.price?.toFixed(2) || '--'}</span></td>
+      <td><span class="change ${changeClass}">${changeSign}${d.change?.toFixed(2) || '--'}%</span></td>
+      <td>${sigHTML}</td>
+      <td>${vwapHTML}</td>
+      <td>${emaHTML}</td>
+      <td>${mtfHTML}</td>
+      <td>${rsHTML}</td>
+      <td>${volHTML}</td>
+      <td>${strHTML}</td>
+    </tr>`;
+}
+
+function applyFilters() {
+  let filtered = [...allData];
+  if (activeFilter !== 'all') filtered = filtered.filter(d => d.signal === activeFilter);
+  if (mtfFilter) filtered = filtered.filter(d => d.mtfConfirmed);
+  if (volFilter) filtered = filtered.filter(d => d.volSpike);
+  if (rsFilter) filtered = filtered.filter(d => d.rsStrong);
+  if (searchVal) filtered = filtered.filter(d => d.name.toLowerCase().includes(searchVal.toLowerCase()));
+  return filtered;
+}
+
+function renderTable() {
+  const filtered = applyFilters();
+  const tbody = document.getElementById('tableBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="11" style="color:var(--text2)">No stocks match current filters</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((d, i) => renderRow(d, i + 1)).join('');
+}
+
+function updateStats() {
+  const d = allData;
+  document.getElementById('statTotal').textContent = d.length;
+  document.getElementById('statBuy').textContent = d.filter(x => x.signal === 'buy').length;
+  document.getElementById('statSell').textContent = d.filter(x => x.signal === 'sell').length;
+  document.getElementById('statMtf').textContent = d.filter(x => x.mtfConfirmed).length;
+  document.getElementById('statRs').textContent = d.filter(x => x.rsStrong).length;
+  document.getElementById('statVol').textContent = d.filter(x => x.volSpike).length;
+  const now = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+  document.getElementById('statUpdate').textContent = now;
+  document.getElementById('footerUpdate').textContent = 'Updated: IST ' + now;
+}
+
+// =============================================
+// MAIN LOAD
+// =============================================
+async function loadScanner() {
+  document.getElementById('tableBody').innerHTML = `
+    <tr class="loading-row"><td colspan="11"><div class="spinner"></div> Fetching live data... (may take 30-60s)</td></tr>`;
+
+  try {
+    // Get Nifty change for RS calculation
+    const niftyData = await fetchYahoo(NIFTY_SYM, '5m', '1d');
+    let niftyChange = null;
+    if (niftyData && niftyData.closes.length >= 2) {
+      const c = niftyData.closes.filter(Boolean);
+      niftyChange = ((c[c.length - 1] - c[0]) / c[0]) * 100;
+    }
+
+    // Process stocks in batches of 3 to avoid rate limiting
+    const results = [];
+    for (let i = 0; i < STOCKS.length; i += 3) {
+      const batch = STOCKS.slice(i, i + 3);
+      const batchResults = await Promise.all(batch.map(s => analyzeStock(s, niftyChange)));
+      batchResults.forEach(r => { if (r) results.push(r); });
+
+      // Update progress
+      document.getElementById('tableBody').innerHTML = `
+        <tr class="loading-row"><td colspan="11"><div class="spinner"></div> Loading... ${results.length}/${STOCKS.length} stocks processed</td></tr>`;
+
+      if (i + 3 < STOCKS.length) await new Promise(r => setTimeout(r, 500));
+    }
+
+    allData = results.sort((a, b) => b.score - a.score);
+    updateStats();
+    renderTable();
+
+  } catch (e) {
+    document.getElementById('tableBody').innerHTML = `
+      <tr class="loading-row"><td colspan="11" style="color:var(--sell)">⚠ Error loading data. Try refreshing.</td></tr>`;
+  }
+}
+
+// =============================================
+// FILTER HANDLERS
+// =============================================
+function setFilter(val, btn) {
+  activeFilter = val;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    if (['All','▲ Buy','▼ Sell','— Wait'].some(t => b.textContent.includes(t.replace('▲ ','').replace('▼ ','').replace('— ','')))) {
+      b.classList.remove('active','buy-active','sell-active','wait-active');
+    }
+  });
+  const classMap = { all: 'active', buy: 'buy-active', sell: 'sell-active', wait: 'wait-active' };
+  btn.classList.add(classMap[val]);
+  renderTable();
+}
+
+function setMtfFilter(btn) {
+  mtfFilter = !mtfFilter;
+  btn.classList.toggle('active', mtfFilter);
+  renderTable();
+}
+
+function setVolFilter(btn) {
+  volFilter = !volFilter;
+  btn.classList.toggle('active', volFilter);
+  renderTable();
+}
+
+function setRsFilter(btn) {
+  rsFilter = !rsFilter;
+  btn.classList.toggle('active', rsFilter);
+  renderTable();
+}
+
+function searchStock(val) {
+  searchVal = val;
+  renderTable();
+}
+
+// =============================================
+// AUTO REFRESH
+// =============================================
+setInterval(updateClock, 1000);
+updateClock();
+loadScanner();
+
+// Auto refresh every 60s during market hours
+setInterval(() => {
+  const isOpen = updateClock();
+  if (isOpen) loadScanner();
+}, 60000);
+</script>
+</body>
+</html>
