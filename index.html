@@ -941,11 +941,11 @@ setInterval(updateClock, 1000);
 updateClock();
 loadScanner();
 
-// Auto refresh every 60s during market hours
+// Auto refresh every 900000s during market hours
 setInterval(() => {
   const isOpen = updateClock();
   if (isOpen) loadScanner();
-}, 60000);
+}, 900000); // 15 minutes
 </script>
 </body>
 </html>
