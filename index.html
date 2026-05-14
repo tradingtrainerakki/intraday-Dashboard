@@ -300,6 +300,24 @@
     <button class="filter-btn" onclick="setFilter('wait', this)">— Wait</button>
   </div>
   <div class="filter-group">
+    <span class="filter-label">SECTOR:</span>
+    <select class="search-box" onchange="setSectorFilter(this.value)" style="width:120px">
+      <option value="">All Sectors</option>
+      <option value="BANKING">🏦 Banking</option>
+      <option value="IT">💻 IT</option>
+      <option value="AUTO">🚗 Auto</option>
+      <option value="ENERGY">⚡ Energy</option>
+      <option value="FMCG">🛒 FMCG</option>
+      <option value="PHARMA">💊 Pharma</option>
+      <option value="METAL">🔩 Metal</option>
+      <option value="FINANCE">💰 Finance</option>
+      <option value="INFRA">🏗 Infra</option>
+      <option value="REALTY">🏠 Realty</option>
+      <option value="DEFENCE">🛡 Defence</option>
+      <option value="CONSUMER">🛍 Consumer</option>
+    </select>
+  </div>
+  <div class="filter-group">
     <span class="filter-label">CONFIRM:</span>
     <button class="filter-btn" onclick="setMtfFilter(this)">MTF ✓</button>
   </div>
@@ -316,6 +334,17 @@
     <span class="feature-tag ft-mtf">MTF</span>
     <span class="feature-tag ft-rs">RS</span>
     <span class="feature-tag ft-vol">VOL SPIKE</span>
+  </div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div id="progressWrap" style="display:none; background:#0d1219; padding:6px 20px; border-bottom:1px solid #1e2d3d;">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span style="font-size:10px; color:#6a8aaa; letter-spacing:1px;" id="progressText">Loading...</span>
+    <div style="flex:1; height:4px; background:#1e2d3d; border-radius:2px; overflow:hidden;">
+      <div id="progressBar" style="height:100%; width:0%; background:linear-gradient(90deg,#00d4ff,#00ff88); border-radius:2px; transition:width 0.3s;"></div>
+    </div>
+    <span style="font-size:10px; color:#00d4ff;" id="progressPct">0%</span>
   </div>
 </div>
 
@@ -368,26 +397,112 @@
 // CONFIG
 // =============================================
 const STOCKS = [
-  { sym: "RELIANCE.NS", name: "RELIANCE", sector: "ENERGY" },
-  { sym: "HDFCBANK.NS", name: "HDFCBANK", sector: "BANKING" },
-  { sym: "TCS.NS", name: "TCS", sector: "IT" },
-  { sym: "ICICIBANK.NS", name: "ICICIBANK", sector: "BANKING" },
-  { sym: "INFY.NS", name: "INFY", sector: "IT" },
-  { sym: "SBIN.NS", name: "SBIN", sector: "BANKING" },
-  { sym: "TATAMOTORS.NS", name: "TATAMOTORS", sector: "AUTO" },
-  { sym: "BAJFINANCE.NS", name: "BAJFINANCE", sector: "FINANCE" },
-  { sym: "WIPRO.NS", name: "WIPRO", sector: "IT" },
-  { sym: "MARUTI.NS", name: "MARUTI", sector: "AUTO" },
-  { sym: "HINDUNILVR.NS", name: "HINDUNILVR", sector: "FMCG" },
-  { sym: "ITC.NS", name: "ITC", sector: "FMCG" },
-  { sym: "AXISBANK.NS", name: "AXISBANK", sector: "BANKING" },
-  { sym: "KOTAKBANK.NS", name: "KOTAKBANK", sector: "BANKING" },
-  { sym: "LT.NS", name: "LT", sector: "INFRA" },
-  { sym: "NTPC.NS", name: "NTPC", sector: "ENERGY" },
-  { sym: "ONGC.NS", name: "ONGC", sector: "ENERGY" },
-  { sym: "SUNPHARMA.NS", name: "SUNPHARMA", sector: "PHARMA" },
-  { sym: "TITAN.NS", name: "TITAN", sector: "CONSUMER" },
-  { sym: "ADANIPORTS.NS", name: "ADANIPORTS", sector: "INFRA" },
+  // ── NIFTY 50 ──
+  { sym: "RELIANCE.NS",    name: "RELIANCE",    sector: "ENERGY"   },
+  { sym: "HDFCBANK.NS",    name: "HDFCBANK",    sector: "BANKING"  },
+  { sym: "ICICIBANK.NS",   name: "ICICIBANK",   sector: "BANKING"  },
+  { sym: "TCS.NS",         name: "TCS",         sector: "IT"       },
+  { sym: "INFY.NS",        name: "INFY",        sector: "IT"       },
+  { sym: "SBIN.NS",        name: "SBIN",        sector: "BANKING"  },
+  { sym: "BHARTIARTL.NS",  name: "BHARTIARTL",  sector: "TELECOM"  },
+  { sym: "HINDUNILVR.NS",  name: "HINDUNILVR",  sector: "FMCG"     },
+  { sym: "ITC.NS",         name: "ITC",         sector: "FMCG"     },
+  { sym: "KOTAKBANK.NS",   name: "KOTAKBANK",   sector: "BANKING"  },
+  { sym: "LT.NS",          name: "LT",          sector: "INFRA"    },
+  { sym: "AXISBANK.NS",    name: "AXISBANK",    sector: "BANKING"  },
+  { sym: "WIPRO.NS",       name: "WIPRO",       sector: "IT"       },
+  { sym: "HCLTECH.NS",     name: "HCLTECH",     sector: "IT"       },
+  { sym: "ASIANPAINT.NS",  name: "ASIANPAINT",  sector: "CONSUMER" },
+  { sym: "MARUTI.NS",      name: "MARUTI",      sector: "AUTO"     },
+  { sym: "SUNPHARMA.NS",   name: "SUNPHARMA",   sector: "PHARMA"   },
+  { sym: "TITAN.NS",       name: "TITAN",       sector: "CONSUMER" },
+  { sym: "ULTRACEMCO.NS",  name: "ULTRACEMCO",  sector: "CEMENT"   },
+  { sym: "BAJFINANCE.NS",  name: "BAJFINANCE",  sector: "FINANCE"  },
+  { sym: "POWERGRID.NS",   name: "POWERGRID",   sector: "ENERGY"   },
+  { sym: "NTPC.NS",        name: "NTPC",        sector: "ENERGY"   },
+  { sym: "TECHM.NS",       name: "TECHM",       sector: "IT"       },
+  { sym: "NESTLEIND.NS",   name: "NESTLEIND",   sector: "FMCG"     },
+  { sym: "BAJAJFINSV.NS",  name: "BAJAJFINSV",  sector: "FINANCE"  },
+  { sym: "ONGC.NS",        name: "ONGC",        sector: "ENERGY"   },
+  { sym: "TATAMOTORS.NS",  name: "TATAMOTORS",  sector: "AUTO"     },
+  { sym: "JSWSTEEL.NS",    name: "JSWSTEEL",    sector: "METAL"    },
+  { sym: "TATASTEEL.NS",   name: "TATASTEEL",   sector: "METAL"    },
+  { sym: "ADANIENT.NS",    name: "ADANIENT",    sector: "INFRA"    },
+  { sym: "ADANIPORTS.NS",  name: "ADANIPORTS",  sector: "INFRA"    },
+  { sym: "COALINDIA.NS",   name: "COALINDIA",   sector: "ENERGY"   },
+  { sym: "DIVISLAB.NS",    name: "DIVISLAB",    sector: "PHARMA"   },
+  { sym: "DRREDDY.NS",     name: "DRREDDY",     sector: "PHARMA"   },
+  { sym: "EICHERMOT.NS",   name: "EICHERMOT",   sector: "AUTO"     },
+  { sym: "GRASIM.NS",      name: "GRASIM",      sector: "CEMENT"   },
+  { sym: "HDFCLIFE.NS",    name: "HDFCLIFE",    sector: "FINANCE"  },
+  { sym: "HEROMOTOCO.NS",  name: "HEROMOTOCO",  sector: "AUTO"     },
+  { sym: "HINDALCO.NS",    name: "HINDALCO",    sector: "METAL"    },
+  { sym: "INDUSINDBK.NS",  name: "INDUSINDBK",  sector: "BANKING"  },
+  { sym: "CIPLA.NS",       name: "CIPLA",       sector: "PHARMA"   },
+  { sym: "BRITANNIA.NS",   name: "BRITANNIA",   sector: "FMCG"     },
+  { sym: "BPCL.NS",        name: "BPCL",        sector: "ENERGY"   },
+  { sym: "APOLLOHOSP.NS",  name: "APOLLOHOSP",  sector: "PHARMA"   },
+  { sym: "TATACONSUM.NS",  name: "TATACONSUM",  sector: "FMCG"     },
+  { sym: "SBILIFE.NS",     name: "SBILIFE",     sector: "FINANCE"  },
+  { sym: "SHRIRAMFIN.NS",  name: "SHRIRAMFIN",  sector: "FINANCE"  },
+  { sym: "M&M.NS",         name: "M&M",         sector: "AUTO"     },
+  { sym: "BAJAJ-AUTO.NS",  name: "BAJAJ-AUTO",  sector: "AUTO"     },
+  { sym: "UPL.NS",         name: "UPL",         sector: "AGRO"     },
+  // ── BANK NIFTY EXTRA ──
+  { sym: "BANKBARODA.NS",  name: "BANKBARODA",  sector: "BANKING"  },
+  { sym: "FEDERALBNK.NS",  name: "FEDERALBNK",  sector: "BANKING"  },
+  { sym: "IDFCFIRSTB.NS",  name: "IDFCFIRSTB",  sector: "BANKING"  },
+  { sym: "RBLBANK.NS",     name: "RBLBANK",     sector: "BANKING"  },
+  { sym: "PNB.NS",         name: "PNB",         sector: "BANKING"  },
+  { sym: "CANBK.NS",       name: "CANBK",       sector: "BANKING"  },
+  { sym: "BANDHANBNK.NS",  name: "BANDHANBNK",  sector: "BANKING"  },
+  { sym: "AUBANK.NS",      name: "AUBANK",      sector: "BANKING"  },
+  // ── F&O HIGH VOLUME ──
+  { sym: "VEDL.NS",        name: "VEDL",        sector: "METAL"    },
+  { sym: "SAIL.NS",        name: "SAIL",        sector: "METAL"    },
+  { sym: "NMDC.NS",        name: "NMDC",        sector: "METAL"    },
+  { sym: "NHPC.NS",        name: "NHPC",        sector: "ENERGY"   },
+  { sym: "RECLTD.NS",      name: "RECLTD",      sector: "FINANCE"  },
+  { sym: "PFC.NS",         name: "PFC",         sector: "FINANCE"  },
+  { sym: "IRFC.NS",        name: "IRFC",        sector: "FINANCE"  },
+  { sym: "HAL.NS",         name: "HAL",         sector: "DEFENCE"  },
+  { sym: "BEL.NS",         name: "BEL",         sector: "DEFENCE"  },
+  { sym: "BHEL.NS",        name: "BHEL",        sector: "INFRA"    },
+  { sym: "GAIL.NS",        name: "GAIL",        sector: "ENERGY"   },
+  { sym: "IOC.NS",         name: "IOC",         sector: "ENERGY"   },
+  { sym: "HPCL.NS",        name: "HPCL",        sector: "ENERGY"   },
+  { sym: "TATAPOWER.NS",   name: "TATAPOWER",   sector: "ENERGY"   },
+  { sym: "ADANIGREEN.NS",  name: "ADANIGREEN",  sector: "ENERGY"   },
+  { sym: "ADANIPOWER.NS",  name: "ADANIPOWER",  sector: "ENERGY"   },
+  { sym: "ZOMATO.NS",      name: "ZOMATO",      sector: "CONSUMER" },
+  { sym: "DMART.NS",       name: "DMART",       sector: "RETAIL"   },
+  { sym: "IRCTC.NS",       name: "IRCTC",       sector: "INFRA"    },
+  { sym: "MUTHOOTFIN.NS",  name: "MUTHOOTFIN",  sector: "FINANCE"  },
+  { sym: "CHOLAFIN.NS",    name: "CHOLAFIN",    sector: "FINANCE"  },
+  { sym: "MANAPPURAM.NS",  name: "MANAPPURAM",  sector: "FINANCE"  },
+  { sym: "LTIM.NS",        name: "LTIM",        sector: "IT"       },
+  { sym: "PERSISTENT.NS",  name: "PERSISTENT",  sector: "IT"       },
+  { sym: "COFORGE.NS",     name: "COFORGE",     sector: "IT"       },
+  { sym: "MPHASIS.NS",     name: "MPHASIS",     sector: "IT"       },
+  { sym: "TATAELXSI.NS",   name: "TATAELXSI",   sector: "IT"       },
+  { sym: "INDIGO.NS",      name: "INDIGO",      sector: "INFRA"    },
+  { sym: "DLF.NS",         name: "DLF",         sector: "REALTY"   },
+  { sym: "GODREJPROP.NS",  name: "GODREJPROP",  sector: "REALTY"   },
+  { sym: "OBEROIRLTY.NS",  name: "OBEROIRLTY",  sector: "REALTY"   },
+  { sym: "VOLTAS.NS",      name: "VOLTAS",      sector: "CONSUMER" },
+  { sym: "HAVELLS.NS",     name: "HAVELLS",     sector: "CONSUMER" },
+  { sym: "CROMPTON.NS",    name: "CROMPTON",    sector: "CONSUMER" },
+  { sym: "POLYCAB.NS",     name: "POLYCAB",     sector: "CONSUMER" },
+  { sym: "AMBUJACEM.NS",   name: "AMBUJACEM",   sector: "CEMENT"   },
+  { sym: "ACC.NS",         name: "ACC",         sector: "CEMENT"   },
+  { sym: "PIDILITIND.NS",  name: "PIDILITIND",  sector: "CHEMICAL" },
+  { sym: "APOLLOTYRE.NS",  name: "APOLLOTYRE",  sector: "AUTO"     },
+  { sym: "BALKRISIND.NS",  name: "BALKRISIND",  sector: "AUTO"     },
+  { sym: "AUROPHARMA.NS",  name: "AUROPHARMA",  sector: "PHARMA"   },
+  { sym: "TORNTPHARM.NS",  name: "TORNTPHARM",  sector: "PHARMA"   },
+  { sym: "ALKEM.NS",       name: "ALKEM",       sector: "PHARMA"   },
+  { sym: "PAGEIND.NS",     name: "PAGEIND",     sector: "CONSUMER" },
+  { sym: "BERGEPAINT.NS",  name: "BERGEPAINT",  sector: "CONSUMER" },
 ];
 
 const NIFTY_SYM = "^NSEI";
@@ -396,6 +511,7 @@ let activeFilter = 'all';
 let mtfFilter = false;
 let volFilter = false;
 let rsFilter = false;
+let sectorFilter = '';
 let searchVal = '';
 let refreshInterval = null;
 
@@ -689,6 +805,7 @@ function applyFilters() {
   if (mtfFilter) filtered = filtered.filter(d => d.mtfConfirmed);
   if (volFilter) filtered = filtered.filter(d => d.volSpike);
   if (rsFilter) filtered = filtered.filter(d => d.rsStrong);
+  if (sectorFilter) filtered = filtered.filter(d => d.sector === sectorFilter);
   if (searchVal) filtered = filtered.filter(d => d.name.toLowerCase().includes(searchVal.toLowerCase()));
   return filtered;
 }
@@ -721,7 +838,10 @@ function updateStats() {
 // =============================================
 async function loadScanner() {
   document.getElementById('tableBody').innerHTML = `
-    <tr class="loading-row"><td colspan="11"><div class="spinner"></div> Fetching live data... (may take 30-60s)</td></tr>`;
+    <tr class="loading-row"><td colspan="11"><div class="spinner"></div> Initializing... (${STOCKS.length} stocks)</td></tr>`;
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressPct').textContent = '0%';
 
   try {
     // Get Nifty change for RS calculation
@@ -732,25 +852,30 @@ async function loadScanner() {
       niftyChange = ((c[c.length - 1] - c[0]) / c[0]) * 100;
     }
 
-    // Process stocks in batches of 3 to avoid rate limiting
+    // Process stocks in batches of 4
     const results = [];
-    for (let i = 0; i < STOCKS.length; i += 3) {
-      const batch = STOCKS.slice(i, i + 3);
+    const total = STOCKS.length;
+    for (let i = 0; i < total; i += 4) {
+      const batch = STOCKS.slice(i, i + 4);
       const batchResults = await Promise.all(batch.map(s => analyzeStock(s, niftyChange)));
       batchResults.forEach(r => { if (r) results.push(r); });
 
-      // Update progress
-      document.getElementById('tableBody').innerHTML = `
-        <tr class="loading-row"><td colspan="11"><div class="spinner"></div> Loading... ${results.length}/${STOCKS.length} stocks processed</td></tr>`;
+      // Update progress bar
+      const pct = Math.round(((i + 4) / total) * 100);
+      document.getElementById('progressBar').style.width = Math.min(pct, 100) + '%';
+      document.getElementById('progressPct').textContent = Math.min(pct, 100) + '%';
+      document.getElementById('progressText').textContent = `Loading ${Math.min(i+4, total)}/${total} stocks...`;
 
-      if (i + 3 < STOCKS.length) await new Promise(r => setTimeout(r, 500));
+      if (i + 4 < total) await new Promise(r => setTimeout(r, 400));
     }
 
+    document.getElementById('progressWrap').style.display = 'none';
     allData = results.sort((a, b) => b.score - a.score);
     updateStats();
     renderTable();
 
   } catch (e) {
+    document.getElementById('progressWrap').style.display = 'none';
     document.getElementById('tableBody').innerHTML = `
       <tr class="loading-row"><td colspan="11" style="color:var(--sell)">⚠ Error loading data. Try refreshing.</td></tr>`;
   }
@@ -768,6 +893,11 @@ function setFilter(val, btn) {
   });
   const classMap = { all: 'active', buy: 'buy-active', sell: 'sell-active', wait: 'wait-active' };
   btn.classList.add(classMap[val]);
+  renderTable();
+}
+
+function setSectorFilter(val) {
+  sectorFilter = val;
   renderTable();
 }
 
